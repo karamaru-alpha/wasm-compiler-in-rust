@@ -1,3 +1,7 @@
+mod relp;
+
+use crate::relp::start;
+
 fn main() {
-    println!("Hello, world!");
+    start();
 }
