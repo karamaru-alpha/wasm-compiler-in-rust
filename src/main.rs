@@ -1,7 +1,9 @@
+mod ast;
+mod lexer;
+mod parser;
 mod relp;
-
-use crate::relp::start;
+mod token;
 
 fn main() {
-    start();
+    relp::start();
 }

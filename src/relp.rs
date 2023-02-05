@@ -1,3 +1,4 @@
+use crate::{lexer::Lexer, parser::Parser};
 use std::io::{self, Write};
 
 pub fn start() {
@@ -10,10 +11,14 @@ pub fn start() {
             .read_line(&mut line)
             .expect("Failed to read line");
 
-        if line.trim() == "exit" {
+        let input = line.trim();
+        if input == "exit" {
             break println!("bye!");
         }
 
-        println!("{}", line.trim());
+        let lexer = Lexer::new(&input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        println!("{:?}", program.statements);
     }
 }
