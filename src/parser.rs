@@ -1,4 +1,4 @@
-use crate::{ast, lexer::Lexer, token::Token};
+use crate::{ast::*, lexer::Lexer, token::Precedence, token::Token};
 
 #[derive(Clone)]
 pub struct Parser<'a> {
@@ -24,8 +24,8 @@ impl<'a> Parser<'a> {
         self.peek = self.lex.next_token()
     }
 
-    pub fn parse_program(&mut self) -> ast::Program {
-        let mut program = ast::Program { statements: vec![] };
+    pub fn parse_program(&mut self) -> Program {
+        let mut program = Program { statements: vec![] };
         while self.current != Token::Eof {
             program.statements.push(self.parse_statement());
             self.next_token()
@@ -33,20 +33,35 @@ impl<'a> Parser<'a> {
         program
     }
 
-    fn parse_statement(&mut self) -> ast::Statement {
+    fn parse_statement(&mut self) -> Statement {
         self.parse_expression_statement()
     }
 
-    fn parse_expression_statement(&mut self) -> ast::Statement {
-        ast::Statement::Expression(self.parse_expression())
+    fn parse_expression_statement(&mut self) -> Statement {
+        Statement::Expression(self.parse_expression(Precedence::Lowest))
     }
 
-    fn parse_expression(&mut self) -> ast::Expression {
+    fn parse_expression(&mut self, precedence: Precedence) -> Expression {
         let left = match self.current {
-            Token::Int(val) => ast::Expression::Int(val),
+            Token::Int(val) => Expression::Literal(Literal::Int(val)),
             _ => panic!("unsupported expression."),
         };
-        // TODO: 中間演算子
+
+        if self.peek != Token::Semicolon && precedence < self.peek.precedence() {
+            self.next_token();
+            return self.parse_infix_expression(left)
+        }
+
         left
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Expression {
+        let infix = match self.current {
+            Token::Plus => Infix::Plus,
+            _ => panic!("unsupported infix."),
+        };
+        self.next_token();
+        let right = self.parse_expression(self.current.precedence());
+        Expression::Infix(infix, Box::from(left), Box::from(right))
     }
 }

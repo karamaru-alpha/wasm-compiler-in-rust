@@ -18,6 +18,7 @@ impl<'a> Lexer<'a> {
         lexer.read_char();
         lexer
     }
+
     fn read_char(&mut self) {
         self.current = self.peek.clone();
         self.peek = self.input.next().unwrap_or('\u{0}');
@@ -27,6 +28,7 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
         let token = match self.current {
             '+' => Token::Plus,
+            ';' => Token::Semicolon,
             '\u{0}' => Token::Eof,
             c => {
                 if c.is_ascii_digit() {
