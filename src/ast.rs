@@ -4,16 +4,19 @@ pub struct Program {
 }
 
 #[derive(Debug)]
+pub struct Ident(pub String);
+
+#[derive(Debug)]
 pub enum Statement {
+    Fn(Ident, Vec<Expression>, Vec<Statement>),
     Expression(Expression),
 }
 
 #[derive(Debug)]
 pub enum Expression {
-    Ident(String),
+    Ident(Ident),
     Literal(Literal),
     Infix(Infix, Box<Expression>, Box<Expression>),
-    Fn(Vec<Expression>, Vec<Statement>),
 }
 
 #[derive(Debug)]

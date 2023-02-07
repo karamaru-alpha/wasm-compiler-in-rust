@@ -30,11 +30,15 @@ impl<'a> Parser<'a> {
             program.statements.push(self.parse_statement());
             self.next_token()
         }
+
         program
     }
 
     fn parse_statement(&mut self) -> Statement {
-        self.parse_expression_statement()
+        return match self.current {
+            Token::Fn => self.parse_fn_statement(),
+            _ => self.parse_expression_statement(),
+        };
     }
 
     fn parse_expression_statement(&mut self) -> Statement {
@@ -47,9 +51,8 @@ impl<'a> Parser<'a> {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Expression {
         let left = match &self.current {
-            Token::Ident(val) => Expression::Ident(val.parse().unwrap()),
             Token::Int(val) => Expression::Literal(Literal::Int(*val)),
-            Token::Fn => self.parse_fn_expression(),
+            Token::Ident(val) => Expression::Ident(Ident(val.parse().unwrap())),
             _ => panic!("unsupported expression."),
         };
 
@@ -61,7 +64,14 @@ impl<'a> Parser<'a> {
         left
     }
 
-    fn parse_fn_expression(&mut self) -> Expression {
+    fn parse_ident(&mut self) -> Ident {
+        return match &self.current {
+            Token::Ident(val) => Ident(val.parse().unwrap()),
+            _ => panic!("unsupported expression."),
+        };
+    }
+
+    fn parse_fn_statement(&mut self) -> Statement {
         self.next_token();
 
         match self.current {
@@ -69,7 +79,7 @@ impl<'a> Parser<'a> {
             _ => panic!("fn ident not found."),
         }
 
-        let _ = self.parse_expression(Precedence::Lowest);
+        let ident = self.parse_ident();
 
         self.next_token();
         if self.current != Token::Lparen {
@@ -98,7 +108,7 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Expression::Fn(args, blocks)
+        Statement::Fn(ident, args, blocks)
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {
