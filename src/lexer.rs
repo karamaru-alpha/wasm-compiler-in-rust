@@ -29,9 +29,16 @@ impl<'a> Lexer<'a> {
         let token = match self.current {
             '+' => Token::Plus,
             ';' => Token::Semicolon,
+            '(' => Token::Lparen,
+            ')' => Token::Rparen,
+            '{' => Token::Lbracket,
+            '}' => Token::Rbracket,
+            ',' => Token::Comma,
             '\u{0}' => Token::Eof,
             c => {
-                if c.is_ascii_digit() {
+                if c.is_ascii_alphabetic() {
+                    self.read_letter()
+                } else if c.is_ascii_digit() {
                     self.read_number()
                 } else {
                     panic!("unsupported token.");
@@ -49,6 +56,19 @@ impl<'a> Lexer<'a> {
                 _ => break,
             }
         }
+    }
+
+    fn read_letter(&mut self) -> Token {
+        let mut letter = self.current.to_string();
+        while self.peek.is_ascii_alphabetic() {
+            self.read_char();
+            letter.push(self.current);
+        }
+
+        return match letter.as_str() {
+            "fn" => Token::Fn,
+            _ => Token::Ident(letter),
+        };
     }
 
     fn read_number(&mut self) -> Token {

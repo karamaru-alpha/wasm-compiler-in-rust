@@ -10,8 +10,10 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub enum Expression {
+    Ident(String),
     Literal(Literal),
     Infix(Infix, Box<Expression>, Box<Expression>),
+    Fn(Vec<Expression>, Vec<Statement>),
 }
 
 #[derive(Debug)]

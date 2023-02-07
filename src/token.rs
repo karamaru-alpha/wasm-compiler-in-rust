@@ -2,6 +2,13 @@
 pub enum Token {
     Int(i64),
     Plus,
+    Ident(String),
+    Fn,
+    Lparen,
+    Rparen,
+    Lbracket,
+    Rbracket,
+    Comma,
     Semicolon,
     Eof,
 }

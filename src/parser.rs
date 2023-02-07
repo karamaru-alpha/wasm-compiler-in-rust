@@ -38,21 +38,67 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_statement(&mut self) -> Statement {
-        Statement::Expression(self.parse_expression(Precedence::Lowest))
+        let statement = Statement::Expression(self.parse_expression(Precedence::Lowest));
+        if self.peek == Token::Semicolon {
+            self.next_token();
+        }
+        statement
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Expression {
-        let left = match self.current {
-            Token::Int(val) => Expression::Literal(Literal::Int(val)),
+        let left = match &self.current {
+            Token::Ident(val) => Expression::Ident(val.parse().unwrap()),
+            Token::Int(val) => Expression::Literal(Literal::Int(*val)),
+            Token::Fn => self.parse_fn_expression(),
             _ => panic!("unsupported expression."),
         };
 
         if self.peek != Token::Semicolon && precedence < self.peek.precedence() {
             self.next_token();
-            return self.parse_infix_expression(left)
+            return self.parse_infix_expression(left);
         }
 
         left
+    }
+
+    fn parse_fn_expression(&mut self) -> Expression {
+        self.next_token();
+
+        match self.current {
+            Token::Ident(_) => {}
+            _ => panic!("fn ident not found."),
+        }
+
+        let _ = self.parse_expression(Precedence::Lowest);
+
+        self.next_token();
+        if self.current != Token::Lparen {
+            panic!("fn lparen not found.");
+        }
+
+        self.next_token();
+        let mut args = Vec::new();
+        while self.current != Token::Rparen {
+            args.push(self.parse_expression(Precedence::Lowest));
+            self.next_token();
+            if self.current == Token::Comma {
+                self.next_token();
+            }
+        }
+
+        self.next_token();
+        if self.current != Token::Lbracket {
+            panic!("fn lbracket not found.")
+        }
+
+        self.next_token();
+        let mut blocks = Vec::new();
+        while self.current != Token::Rbracket {
+            blocks.push(self.parse_statement());
+            self.next_token();
+        }
+
+        Expression::Fn(args, blocks)
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {
