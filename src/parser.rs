@@ -35,10 +35,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> Statement {
-        return match self.current {
-            Token::Fn => self.parse_fn_statement(),
-            _ => self.parse_expression_statement(),
-        };
+        if self.current == Token::Fn {
+            return self.parse_fn_statement();
+        }
+        self.parse_expression_statement()
     }
 
     fn parse_expression_statement(&mut self) -> Statement {
@@ -108,7 +108,11 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Statement::Fn(ident, args, blocks)
+        Statement::Fn {
+            ident,
+            args,
+            blocks,
+        }
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {

@@ -20,7 +20,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_char(&mut self) {
-        self.current = self.peek.clone();
+        self.current = self.peek;
         self.peek = self.input.next().unwrap_or('\u{0}');
     }
 
@@ -46,15 +46,12 @@ impl<'a> Lexer<'a> {
             }
         };
         self.read_char();
-        return token;
+        token
     }
 
     fn skip_whitespace(&mut self) {
-        loop {
-            match self.current {
-                ' ' | '\t' | '\n' | '\r' => self.read_char(),
-                _ => break,
-            }
+        while let ' ' | '\t' | '\n' | '\r' = self.current {
+            self.read_char()
         }
     }
 

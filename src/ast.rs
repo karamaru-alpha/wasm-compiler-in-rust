@@ -8,7 +8,11 @@ pub struct Ident(pub String);
 
 #[derive(Debug)]
 pub enum Statement {
-    Fn(Ident, Vec<Expression>, Vec<Statement>),
+    Fn {
+        ident: Ident,
+        args: Vec<Expression>,
+        blocks: Vec<Statement>,
+    },
     Expression(Expression),
 }
 
