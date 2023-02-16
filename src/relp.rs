@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{emitter, lexer::Lexer, parser::Parser};
 use std::io::{self, Write};
 
 pub fn start() {
@@ -19,6 +19,6 @@ pub fn start() {
         let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
-        println!("{:?}", program.statements);
+        emitter::emit(program);
     }
 }

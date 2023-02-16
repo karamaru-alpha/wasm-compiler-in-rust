@@ -1,4 +1,5 @@
 mod ast;
+mod emitter;
 mod lexer;
 mod parser;
 mod relp;
