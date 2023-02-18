@@ -3,7 +3,7 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ident(pub String);
 
 #[derive(Debug)]
