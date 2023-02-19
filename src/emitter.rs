@@ -1,5 +1,6 @@
-use crate::ast::{Expression, Program, Statement};
+use crate::ast::{Ident, Expression, Program, Statement, Infix, Literal};
 use std::{fs::File, io::prelude::*};
+use std::collections::HashMap;
 
 // https://webassembly.github.io/spec/core/binary/modules.html#sections
 enum Section {
@@ -25,7 +26,7 @@ const FUNCTION_TYPE: u8 = 0x60;
 // https://webassembly.github.io/spec/core/binary/instructions.html
 enum Opcode {
     GetLocal = 0x20,
-    // I32Const = 0x41,
+    I32Const = 0x41,
     I32Add = 0x6a,
     End = 0x0b,
 }
@@ -61,30 +62,7 @@ impl Emitter {
             0x00, // function 0 signature index
         ];
         let export_section = self.build_export_section();
-        // let export_section = vec![
-        //     Section::Export as u8,
-        //     0x07,                   // section size
-        //     0x01,                   // num exports
-        //     0x03,                   // string length
-        //     0x61,                   // a
-        //     0x64,                   // d
-        //     0x64,                   // d
-        //     ExportType::Func as u8, // export type
-        //     0x00,                   // export func index
-        // ];
-        let code_section = vec![
-            Section::Code as u8,
-            0x09,                   // section size
-            0x01,                   // num functions
-            0x07,                   // func body size
-            0x00,                   // local decl count
-            Opcode::GetLocal as u8, // local.get
-            0x00,                   // index
-            Opcode::GetLocal as u8, // local.get
-            0x01,                   // index
-            Opcode::I32Add as u8,
-            Opcode::End as u8,
-        ];
+        let code_section = self.build_code_section();
 
         let wasm: &[u8] = [
             magic_module_header,
@@ -100,6 +78,7 @@ impl Emitter {
         let mut file = File::create("a.wasm").expect("err file create");
         file.write_all(wasm).expect("err file write");
         println!("wasm file is output! {wasm:?}");
+        println!("{:?}", self.build_code_section());
     }
 
     fn build_export_section(&self) -> Vec<u8> {
@@ -114,6 +93,63 @@ impl Emitter {
             }
         }
         build_section(Section::Export, body)
+    }
+
+    fn build_code_section(&self) -> Vec<u8> {
+        let mut body = vec![self.program.statements.len() as u8];
+        for (i, statement) in self.program.statements.iter().enumerate() {
+            if let Statement::Expression(Expression::Fn {args, blocks, .. }) = statement {
+                body.extend(build_code_function_section(i as u8, args, blocks));
+            }
+        }
+        build_section(Section::Code, body)
+    }
+}
+
+fn build_code_function_section(function_index: u8, args: &Vec<Ident>, blocks: &Vec<Statement>) -> Vec<u8> {
+    let arg_hash: HashMap<String, u8> = args.iter().enumerate()
+        .map(|(i, arg)| (arg.0.clone(), i as u8))
+        .collect();
+
+    let mut body = vec![function_index];
+    for statement in blocks.iter() {
+        if let Statement::Expression(Expression::Infix(infix, left, right)) = statement {
+            emit_infix_expression(&mut body, &arg_hash, left.as_ref());
+            emit_infix_expression(&mut body, &arg_hash, right.as_ref());
+            match infix {
+                Infix::Plus => body.push(Opcode::I32Add as u8),
+            }
+        }
+    }
+    body.push(Opcode::End as u8);
+    body.insert(0, body.len() as u8);
+    body
+}
+
+fn emit_infix_expression(body: &mut Vec<u8>, arg_hash: &HashMap<String, u8>, expr: &Expression) {
+    match expr {
+        Expression::Ident(ident) => {
+            if let Some(&index) = arg_hash.get(&ident.0) {
+                body.extend_from_slice(&[Opcode::GetLocal as u8, index]);
+            }
+        }
+        Expression::Literal(lit) => {
+            match lit {
+                Literal::Int(v) => {
+                    body.push(Opcode::I32Const as u8);
+                    let leading_zeros = v.leading_zeros() / 8;
+                    body.extend(&v.to_be_bytes()[leading_zeros as usize..]);
+                }
+            }
+        }
+        Expression::Infix(next_infix, left, right) => {
+            emit_infix_expression(body, arg_hash , left.as_ref());
+            emit_infix_expression(body, arg_hash, right.as_ref());
+            match next_infix {
+                Infix::Plus => body.push(Opcode::I32Add as u8),
+            }
+        }
+        _ => {}
     }
 }
 
