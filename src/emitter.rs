@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement};
+use crate::ast::{Expression, Program, Statement};
 use std::{fs::File, io::prelude::*};
 
 // https://webassembly.github.io/spec/core/binary/modules.html#sections
@@ -106,7 +106,7 @@ impl Emitter {
         let mut body = Vec::new();
         body.push(self.program.statements.len() as u8);
         for (i, statement) in self.program.statements.iter().enumerate() {
-            if let Statement::Fn { ident, .. } = statement {
+            if let Statement::Expression(Expression::Fn { ident, .. }) = statement {
                 body.push(ident.0.len() as u8);
                 body.extend_from_slice(ident.0.as_bytes());
                 body.push(ExportType::Func as u8);

@@ -35,9 +35,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> Statement {
-        if self.current == Token::Fn {
-            return self.parse_fn_statement();
-        }
         self.parse_expression_statement()
     }
 
@@ -53,6 +50,7 @@ impl<'a> Parser<'a> {
         let left = match &self.current {
             Token::Int(val) => Expression::Literal(Literal::Int(*val)),
             Token::Ident(val) => Expression::Ident(Ident(val.parse().unwrap())),
+            Token::Fn => self.parse_fn_expression(),
             _ => panic!("unsupported expression."),
         };
 
@@ -71,7 +69,7 @@ impl<'a> Parser<'a> {
         };
     }
 
-    fn parse_fn_statement(&mut self) -> Statement {
+    fn parse_fn_expression(&mut self) -> Expression {
         self.next_token();
 
         match self.current {
@@ -89,7 +87,7 @@ impl<'a> Parser<'a> {
         self.next_token();
         let mut args = Vec::new();
         while self.current != Token::Rparen {
-            args.push(self.parse_expression(Precedence::Lowest));
+            args.push(self.parse_ident());
             self.next_token();
             if self.current == Token::Comma {
                 self.next_token();
@@ -103,12 +101,12 @@ impl<'a> Parser<'a> {
 
         self.next_token();
         let mut blocks = Vec::new();
-        while self.current != Token::Rbracket {
+        while self.current != Token::Rbracket && self.current != Token::Eof {
             blocks.push(self.parse_statement());
             self.next_token();
         }
 
-        Statement::Fn {
+        Expression::Fn {
             ident,
             args,
             blocks,

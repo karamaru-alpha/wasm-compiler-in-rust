@@ -8,11 +8,6 @@ pub struct Ident(pub String);
 
 #[derive(Debug)]
 pub enum Statement {
-    Fn {
-        ident: Ident,
-        args: Vec<Expression>,
-        blocks: Vec<Statement>,
-    },
     Expression(Expression),
 }
 
@@ -21,6 +16,11 @@ pub enum Expression {
     Ident(Ident),
     Literal(Literal),
     Infix(Infix, Box<Expression>, Box<Expression>),
+    Fn {
+        ident: Ident,
+        args: Vec<Ident>,
+        blocks: Vec<Statement>,
+    },
 }
 
 #[derive(Debug)]
