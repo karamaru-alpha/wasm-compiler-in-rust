@@ -55,12 +55,7 @@ impl Emitter {
             0x01, // num results
             Type::I32 as u8,
         ];
-        let function_section = vec![
-            Section::Func as u8,
-            0x02, // section size
-            0x01, // num functions
-            0x00, // function 0 signature index
-        ];
+        let function_section = self.build_function_section();
         let export_section = self.build_export_section();
         let code_section = self.build_code_section();
 
@@ -81,9 +76,15 @@ impl Emitter {
         println!("{:?}", self.build_code_section());
     }
 
+    fn build_function_section(&self) -> Vec<u8> {
+        let function_num = self.program.statements.len() as u8;
+        let mut body = vec![function_num];
+        body.extend(0..function_num);
+        build_section(Section::Func, body)
+    }
+
     fn build_export_section(&self) -> Vec<u8> {
-        let mut body = Vec::new();
-        body.push(self.program.statements.len() as u8);
+        let mut body = vec![self.program.statements.len() as u8];
         for (i, statement) in self.program.statements.iter().enumerate() {
             if let Statement::Expression(Expression::Fn { ident, .. }) = statement {
                 body.push(ident.0.len() as u8);
@@ -110,7 +111,6 @@ fn build_code_function_section(function_index: u8, args: &Vec<Ident>, blocks: &V
     let arg_hash: HashMap<String, u8> = args.iter().enumerate()
         .map(|(i, arg)| (arg.0.clone(), i as u8))
         .collect();
-
     let mut body = vec![function_index];
     for statement in blocks.iter() {
         if let Statement::Expression(Expression::Infix(infix, left, right)) = statement {
