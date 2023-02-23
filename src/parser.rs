@@ -115,6 +115,9 @@ impl<'a> Parser<'a> {
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {
         let infix = match self.current {
             Token::Plus => Infix::Plus,
+            Token::Minus => Infix::Minus,
+            Token::Asterisk => Infix::Asterisk,
+            Token::Slash => Infix::Slash,
             _ => panic!("unsupported infix."),
         };
         self.next_token();

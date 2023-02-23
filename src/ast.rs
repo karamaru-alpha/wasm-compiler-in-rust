@@ -32,4 +32,7 @@ pub enum Literal {
 #[derive(Debug)]
 pub enum Infix {
     Plus,
+    Minus,
+    Asterisk,
+    Slash,
 }

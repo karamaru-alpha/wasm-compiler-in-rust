@@ -28,6 +28,9 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
         let token = match self.current {
             '+' => Token::Plus,
+            '-' => Token::Minus,
+            '*' => Token::Asterisk,
+            '/' => Token::Slash,
             ';' => Token::Semicolon,
             '(' => Token::Lparen,
             ')' => Token::Rparen,

@@ -28,6 +28,9 @@ enum Opcode {
     GetLocal = 0x20,
     I32Const = 0x41,
     I32Add = 0x6a,
+    I32Sub = 0x6b,
+    I32Mul = 0x6c,
+    I32Div = 0x6d,
     End = 0x0b,
 }
 
@@ -152,6 +155,9 @@ fn build_code_function_section(args: &[Ident], blocks: &[Statement]) -> Vec<u8> 
             emit_infix_expression(&mut body, &arg_hash, right.as_ref());
             match infix {
                 Infix::Plus => body.push(Opcode::I32Add as u8),
+                Infix::Minus => body.push(Opcode::I32Sub as u8),
+                Infix::Asterisk => body.push(Opcode::I32Mul as u8),
+                Infix::Slash => body.push(Opcode::I32Div as u8),
             }
         }
     }
@@ -181,6 +187,9 @@ fn emit_infix_expression(body: &mut Vec<u8>, arg_hash: &HashMap<String, u8>, exp
             emit_infix_expression(body, arg_hash, right.as_ref());
             match next_infix {
                 Infix::Plus => body.push(Opcode::I32Add as u8),
+                Infix::Minus => body.push(Opcode::I32Sub as u8),
+                Infix::Asterisk => body.push(Opcode::I32Mul as u8),
+                Infix::Slash => body.push(Opcode::I32Div as u8),
             }
         }
         _ => {}
