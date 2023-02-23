@@ -53,20 +53,19 @@ impl Emitter {
 
         let magic_module_header = vec![0x00, 0x61, 0x73, 0x6d];
         let module_version = vec![0x01, 0x00, 0x00, 0x00];
-
         let type_section = self.build_type_section();
         let function_section = self.build_function_section();
         let export_section = self.build_export_section();
         let code_section = self.build_code_section();
 
-        return [
+        [
             magic_module_header,
             module_version,
             type_section,
             function_section,
             export_section,
             code_section,
-        ].concat();
+        ].concat()
     }
 
     fn build_type_section(&mut self) -> Vec<u8> {
@@ -77,7 +76,7 @@ impl Emitter {
             }
         }
         let mut body = vec![args_count_set.len() as u8];
-        for  args_count in args_count_set.iter() {
+        for args_count in args_count_set.iter() {
             body.extend_from_slice(&[
                 FUNCTION_TYPE,
                 *args_count as u8,
@@ -144,15 +143,23 @@ fn build_code_function_section(args: &[Ident], blocks: &[Statement]) -> Vec<u8> 
         .collect();
     let mut body = vec![0]; // 関数内変数は使用しない
     for statement in blocks.iter() {
-        if let Statement::Expression(Expression::Infix(infix, left, right)) = statement {
-            emit_infix_expression(&mut body, &arg_hash, left.as_ref());
-            emit_infix_expression(&mut body, &arg_hash, right.as_ref());
-            match infix {
-                Infix::Plus => body.push(Opcode::I32Add as u8),
-                Infix::Minus => body.push(Opcode::I32Sub as u8),
-                Infix::Asterisk => body.push(Opcode::I32Mul as u8),
-                Infix::Slash => body.push(Opcode::I32Div as u8),
+        match statement {
+            Statement::Expression(Expression::Infix(infix, left, right)) => {
+                emit_infix_expression(&mut body, &arg_hash, left.as_ref());
+                emit_infix_expression(&mut body, &arg_hash, right.as_ref());
+                match infix {
+                    Infix::Plus => body.push(Opcode::I32Add as u8),
+                    Infix::Minus => body.push(Opcode::I32Sub as u8),
+                    Infix::Asterisk => body.push(Opcode::I32Mul as u8),
+                    Infix::Slash => body.push(Opcode::I32Div as u8),
+                }
             }
+            Statement::Expression(Expression::Literal(Literal::Int(v))) => {
+                body.push(Opcode::I32Const as u8);
+                let leading_zeros = v.leading_zeros() / 8;
+                body.extend(&v.to_be_bytes()[leading_zeros as usize..]);
+            }
+            _ => {}
         }
     }
     body.push(Opcode::End as u8);
