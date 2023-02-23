@@ -1,6 +1,6 @@
 use crate::ast::{Ident, Expression, Program, Statement, Infix, Literal};
 use std::{fs::File, io::prelude::*};
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 
 // https://webassembly.github.io/spec/core/binary/modules.html#sections
 enum Section {
@@ -33,33 +33,31 @@ enum Opcode {
 
 pub struct Emitter {
     program: Program,
+    signature_map: HashMap<usize, usize>, // arg_count: index
 }
 
 impl Emitter {
     pub fn new(program: Program) -> Self {
-        Self { program }
+        Self {
+            program,
+            signature_map: HashMap::new(),
+        }
     }
 
-    pub fn emit(&self) {
+    pub fn emit(&mut self) {
+        if !self.program.statements.iter().any(|s| matches!(s, Statement::Expression(Expression::Fn { .. }))) {
+            panic!("function not found");
+        }
+
         let magic_module_header = vec![0x00, 0x61, 0x73, 0x6d];
         let module_version = vec![0x01, 0x00, 0x00, 0x00];
 
-        let type_section = vec![
-            Section::Type as u8,
-            0x07,          // section size
-            0x01,          // num function types
-            FUNCTION_TYPE, // func
-            0x02,          // num params
-            Type::I32 as u8,
-            Type::I32 as u8,
-            0x01, // num results
-            Type::I32 as u8,
-        ];
+        let type_section = self.build_type_section();
         let function_section = self.build_function_section();
         let export_section = self.build_export_section();
         let code_section = self.build_code_section();
 
-        let wasm: &[u8] = [
+        let wasm = [
             magic_module_header,
             module_version,
             type_section,
@@ -67,23 +65,59 @@ impl Emitter {
             export_section,
             code_section,
         ]
-        .concat()
-        .leak();
+        .concat();
 
         let mut file = File::create("a.wasm").expect("err file create");
-        file.write_all(wasm).expect("err file write");
+        file.write_all(&wasm).expect("err file write");
         println!("wasm file is output! {wasm:?}");
-        println!("{:?}", self.build_code_section());
+    }
+
+    fn build_type_section(&mut self) -> Vec<u8> {
+        let mut args_count_set = HashSet::new();
+        for statement in self.program.statements.iter() {
+            if let Statement::Expression(Expression::Fn { args, .. }) = statement {
+                args_count_set.insert(args.len());
+            }
+        }
+        let mut body = vec![args_count_set.len() as u8];
+        for  args_count in args_count_set.iter() {
+            body.extend_from_slice(&[
+                FUNCTION_TYPE,
+                *args_count as u8,
+            ]);
+            for _ in 0..*args_count{
+                body.push(Type::I32 as u8);
+            }
+            body.extend_from_slice(&[
+                1, // return count は1で固定
+                Type::I32 as u8,
+            ]);
+            match self.signature_map.get(args_count) {
+                None => {
+                    let index = self.signature_map.len();
+                    self.signature_map.insert(*args_count, index);
+                },
+                Some(_) => {},
+            };
+        }
+        build_section(Section::Type, body)
     }
 
     fn build_function_section(&self) -> Vec<u8> {
         let function_num = self.program.statements.len() as u8;
         let mut body = vec![function_num];
-        body.extend(0..function_num);
+        for  statement in self.program.statements.iter() {
+            if let Statement::Expression(Expression::Fn { args, .. }) = statement {
+                if let Some(index) = self.signature_map.get(&args.len()) {
+                    body.push(*index as u8);
+                }
+            }
+        }
         build_section(Section::Func, body)
     }
 
-    fn build_export_section(&self) -> Vec<u8> {
+    fn build_export_section(&self) -> Vec<u8>
+    {
         let mut body = vec![self.program.statements.len() as u8];
         for (i, statement) in self.program.statements.iter().enumerate() {
             if let Statement::Expression(Expression::Fn { ident, .. }) = statement {
@@ -98,20 +132,20 @@ impl Emitter {
 
     fn build_code_section(&self) -> Vec<u8> {
         let mut body = vec![self.program.statements.len() as u8];
-        for (i, statement) in self.program.statements.iter().enumerate() {
+        for statement in self.program.statements.iter() {
             if let Statement::Expression(Expression::Fn {args, blocks, .. }) = statement {
-                body.extend(build_code_function_section(i as u8, args, blocks));
+                body.extend(build_code_function_section(args, blocks));
             }
         }
         build_section(Section::Code, body)
     }
 }
 
-fn build_code_function_section(function_index: u8, args: &Vec<Ident>, blocks: &Vec<Statement>) -> Vec<u8> {
+fn build_code_function_section(args: &[Ident], blocks: &[Statement]) -> Vec<u8> {
     let arg_hash: HashMap<String, u8> = args.iter().enumerate()
         .map(|(i, arg)| (arg.0.clone(), i as u8))
         .collect();
-    let mut body = vec![function_index];
+    let mut body = vec![0]; // 関数内変数は使用しない
     for statement in blocks.iter() {
         if let Statement::Expression(Expression::Infix(infix, left, right)) = statement {
             emit_infix_expression(&mut body, &arg_hash, left.as_ref());

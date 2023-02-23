@@ -36,7 +36,7 @@ impl<'a> Lexer<'a> {
             ',' => Token::Comma,
             '\u{0}' => Token::Eof,
             c => {
-                if c.is_ascii_alphabetic() {
+                if c.is_ascii_alphabetic() || c == '_' {
                     self.read_letter()
                 } else if c.is_ascii_digit() {
                     self.read_number()
@@ -57,7 +57,7 @@ impl<'a> Lexer<'a> {
 
     fn read_letter(&mut self) -> Token {
         let mut letter = self.current.to_string();
-        while self.peek.is_ascii_alphabetic() {
+        while self.peek.is_ascii_alphabetic() || self.peek == '_' {
             self.read_char();
             letter.push(self.current);
         }

@@ -18,7 +18,7 @@ pub fn start() {
 
         let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
-        let emitter = Emitter::new(parser.parse_program());
+        let mut emitter = Emitter::new(parser.parse_program());
         emitter.emit();
     }
 }

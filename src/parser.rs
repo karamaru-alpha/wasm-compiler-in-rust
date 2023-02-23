@@ -30,7 +30,6 @@ impl<'a> Parser<'a> {
             program.statements.push(self.parse_statement());
             self.next_token()
         }
-
         program
     }
 
