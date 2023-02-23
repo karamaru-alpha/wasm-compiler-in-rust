@@ -2,8 +2,7 @@
 
 独自記法をwasmに変換するやつ。
 
-対応記法は関数exportのみで、演算は四則演算のみ。
-
+対応記法は関数exportのみ。対応演算は四則演算のみ。
 
 ```sh
 $ echo "fn add(a, b) { a + b }; fn multiple(a, b) { a * b };" > a.txt

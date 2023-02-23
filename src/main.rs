@@ -17,5 +17,7 @@ fn main() {
 
     let mut file = fs::File::create("a.wasm").expect("err file create");
     file.write_all(&wasm).expect("err write file");
-    println!("Wasm is output to a.wasm.\nRun `python3 -m http.server` (Edit index.html if necessary).");
+    println!("Output wasm to a.wasm.");
+    println!("Binary: {}", wasm.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" "));
+    println!("Run `python3 -m http.server` (Edit index.html if necessary).");
 }
