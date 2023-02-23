@@ -1,5 +1,4 @@
 use crate::ast::{Ident, Expression, Program, Statement, Infix, Literal};
-use std::{fs::File, io::prelude::*};
 use std::collections::{HashSet, HashMap};
 
 // https://webassembly.github.io/spec/core/binary/modules.html#sections
@@ -47,7 +46,7 @@ impl Emitter {
         }
     }
 
-    pub fn emit(&mut self) {
+    pub fn emit(&mut self) -> Vec<u8> {
         if !self.program.statements.iter().any(|s| matches!(s, Statement::Expression(Expression::Fn { .. }))) {
             panic!("function not found");
         }
@@ -60,19 +59,14 @@ impl Emitter {
         let export_section = self.build_export_section();
         let code_section = self.build_code_section();
 
-        let wasm = [
+        return [
             magic_module_header,
             module_version,
             type_section,
             function_section,
             export_section,
             code_section,
-        ]
-        .concat();
-
-        let mut file = File::create("a.wasm").expect("err file create");
-        file.write_all(&wasm).expect("err file write");
-        println!("wasm file is output! {wasm:?}");
+        ].concat();
     }
 
     fn build_type_section(&mut self) -> Vec<u8> {

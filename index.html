@@ -2,7 +2,8 @@
     WebAssembly.instantiateStreaming(
       fetch('a.wasm'), {})
       .then(wasm => {
-          const result = wasm.instance.exports.add(2, 3);
-          console.log(result);
+          const functions = wasm.instance.exports;
+          console.log("add(2, 3): ", functions.add(2, 3));
+          console.log("multiple(2, 3): ", functions.multiple(2, 3));
       });
 </script></body></html>
