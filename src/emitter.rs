@@ -70,83 +70,83 @@ impl Emitter {
 
     fn build_type_section(&mut self) -> Vec<u8> {
         let mut args_count_set = HashSet::new();
-        for statement in self.program.statements.iter() {
+        for statement in &self.program.statements {
             if let Statement::Expression(Expression::Fn { args, .. }) = statement {
                 args_count_set.insert(args.len());
             }
         }
         let mut body = vec![args_count_set.len() as u8];
-        for args_count in args_count_set.iter() {
+        for args_count in args_count_set {
             body.extend_from_slice(&[
                 FUNCTION_TYPE,
-                *args_count as u8,
+                args_count as u8,
             ]);
-            for _ in 0..*args_count{
+            for _ in 0..args_count{
                 body.push(Type::I32 as u8);
             }
             body.extend_from_slice(&[
-                1, // return count は1で固定
+                1,
                 Type::I32 as u8,
             ]);
-            match self.signature_map.get(args_count) {
-                None => {
-                    let index = self.signature_map.len();
-                    self.signature_map.insert(*args_count, index);
-                },
-                Some(_) => {},
-            };
+            let index = self.signature_map.len();
+            self.signature_map.entry(args_count).or_insert(index);
         }
         build_section(Section::Type, body)
     }
 
     fn build_function_section(&self) -> Vec<u8> {
-        let function_num = self.program.statements.len() as u8;
-        let mut body = vec![function_num];
-        for  statement in self.program.statements.iter() {
+        let mut body = Vec::new();
+        let mut function_count = 0;
+        for statement in &self.program.statements {
             if let Statement::Expression(Expression::Fn { args, .. }) = statement {
-                if let Some(index) = self.signature_map.get(&args.len()) {
-                    body.push(*index as u8);
+                if let Some(&index) = self.signature_map.get(&args.len()) {
+                    body.push(index as u8);
+                    function_count += 1;
                 }
             }
         }
+        body.insert(0, function_count as u8);
         build_section(Section::Func, body)
     }
 
-    fn build_export_section(&self) -> Vec<u8>
-    {
-        let mut body = vec![self.program.statements.len() as u8];
+    fn build_export_section(&self) -> Vec<u8> {
+        let mut body = Vec::new();
+        let mut function_count = 0;
         for (i, statement) in self.program.statements.iter().enumerate() {
             if let Statement::Expression(Expression::Fn { ident, .. }) = statement {
                 body.push(ident.0.len() as u8);
                 body.extend_from_slice(ident.0.as_bytes());
                 body.push(ExportType::Func as u8);
                 body.push(i as u8);
+                function_count += 1;
             }
         }
+        body.insert(0, function_count as u8);
         build_section(Section::Export, body)
     }
 
     fn build_code_section(&self) -> Vec<u8> {
-        let mut body = vec![self.program.statements.len() as u8];
-        for statement in self.program.statements.iter() {
+        let mut body = Vec::new();
+        let mut function_count = 0;
+        for statement in &self.program.statements {
             if let Statement::Expression(Expression::Fn {args, blocks, .. }) = statement {
                 body.extend(build_code_function_section(args, blocks));
+                function_count += 1;
             }
         }
+        body.insert(0, function_count as u8);
         build_section(Section::Code, body)
     }
 }
 
 fn build_code_function_section(args: &[Ident], blocks: &[Statement]) -> Vec<u8> {
-    let arg_hash: HashMap<String, u8> = args.iter().enumerate()
-        .map(|(i, arg)| (arg.0.clone(), i as u8))
-        .collect();
+    let arg_hash: HashMap<String, u8> = args.iter().enumerate().map(|(i, arg)| (arg.0.clone(), i as u8)).collect();
     let mut body = vec![0]; // 関数内変数は使用しない
-    for statement in blocks.iter() {
+    for statement in blocks {
         match statement {
             Statement::Expression(Expression::Infix(infix, left, right)) => {
-                emit_infix_expression(&mut body, &arg_hash, left.as_ref());
-                emit_infix_expression(&mut body, &arg_hash, right.as_ref());
+                emit_expression(&mut body, &arg_hash, left.as_ref());
+                emit_expression(&mut body, &arg_hash, right.as_ref());
                 match infix {
                     Infix::Plus => body.push(Opcode::I32Add as u8),
                     Infix::Minus => body.push(Opcode::I32Sub as u8),
@@ -167,7 +167,7 @@ fn build_code_function_section(args: &[Ident], blocks: &[Statement]) -> Vec<u8> 
     body
 }
 
-fn emit_infix_expression(body: &mut Vec<u8>, arg_hash: &HashMap<String, u8>, expr: &Expression) {
+fn emit_expression(body: &mut Vec<u8>, arg_hash: &HashMap<String, u8>, expr: &Expression) {
     match expr {
         Expression::Ident(ident) => {
             if let Some(&index) = arg_hash.get(&ident.0) {
@@ -184,8 +184,8 @@ fn emit_infix_expression(body: &mut Vec<u8>, arg_hash: &HashMap<String, u8>, exp
             }
         }
         Expression::Infix(next_infix, left, right) => {
-            emit_infix_expression(body, arg_hash , left.as_ref());
-            emit_infix_expression(body, arg_hash, right.as_ref());
+            emit_expression(body, arg_hash, left.as_ref());
+            emit_expression(body, arg_hash, right.as_ref());
             match next_infix {
                 Infix::Plus => body.push(Opcode::I32Add as u8),
                 Infix::Minus => body.push(Opcode::I32Sub as u8),
